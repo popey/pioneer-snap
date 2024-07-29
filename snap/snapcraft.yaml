@@ -1,0 +1,119 @@
+name: pioneer
+base: core22
+version: 20240710
+summary: A game of lonely space adventure
+description: |
+  Pioneer is a space adventure game set in the Milky Way galaxy at the
+  turn of the 31st century.
+
+grade: stable
+confinement: strict
+
+
+layout:
+  /usr/share/drirc.d:
+    bind: $SNAP/usr/share/drirc.d
+  /usr/lib/x86_64-linux-gnu/dri:
+    bind: $SNAP/usr/lib/x86_64-linux-gnu/dri
+  /usr/share/vulkan:
+    bind: $SNAP/usr/share/vulkan
+  /usr/lib/x86_64-linux-gnu/libvulkan_intel.so:
+    bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libvulkan_intel.so
+  /usr/lib/x86_64-linux-gnu/libvulkan_lvp.so:
+    bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libvulkan_lvp.so
+  /usr/lib/x86_64-linux-gnu/libvulkan_radeon.so:
+    bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libvulkan_radeon.so
+
+parts:
+  libs:
+    plugin: nil
+    stage-packages:
+      - libspeechd2
+      - mesa-va-drivers
+      - mesa-vulkan-drivers
+      - vulkan-tools
+    prime:
+      - usr/lib/*/libspeech*
+      - usr/lib/*/dri
+      - usr/lib/*/libVk*
+      - usr/lib/*/libvulkan*
+      - usr/lib/*/libxcb-randr*
+      - usr/share/vulkan
+      - usr/bin/vk*
+  alsa-mixin:
+    plugin: dump
+    source: https://github.com/diddlesnaps/snapcraft-alsa.git
+    source-subdir: snapcraft-assets
+    build-packages:
+      - libasound2-dev
+    stage-packages:
+      - libasound2
+      - libasound2-plugins
+      - yad
+    stage:
+      # restrict to only audio-related files - you need to ensure
+      # that gtk3 is staged for yad to work correctly, to prompt
+      # users to connect the alsa plug or proceed with pulseaudio.
+      #
+      # This helps prevent symbol conflicts in situations where
+      # you're using a non-default library, such as those that the
+      # gnome-3-34 extension for core18 provides.
+      - etc/asound.conf
+      - snap/command-chain/alsa-launch
+      - usr/bin/yad*
+      - usr/lib/$SNAPCRAFT_ARCH_TRIPLET/alsa-lib
+      - usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libasound*
+      - usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libdnsfile*
+      - usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libFLAC*
+      - usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libjack*
+      - usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libpulse*
+      - usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libsamplerate*
+      - usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libspeex*
+      - usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libvorbis*
+      - usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio
+  pioneer:
+    after: [alsa-mixin]
+    plugin: cmake
+    source: https://github.com/pioneerspacesim/pioneer/archive/refs/tags/$SNAPCRAFT_PROJECT_VERSION.tar.gz
+    build-packages:
+      - g++
+      - cmake
+      - mesa-common-dev
+      - libfreeimage-dev
+      - libglew-dev
+      - libfreetype6-dev
+      - libsigc++-2.0-0v5
+      - libsigc++-2.0-dev
+      - libvorbis-dev
+      - libassimp-dev
+      - libsdl2-dev
+      - libsdl2-image-dev
+    stage-packages:
+      - libsdl2-2.0-0
+      - libsdl2-image-2.0-0
+      - libassimp5
+    override-build: |
+      craftctl default
+      cp -a $SNAPCRAFT_PART_SRC/data $SNAPCRAFT_PART_INSTALL/
+  launcher:
+    plugin: dump
+    source: snap/local
+
+apps:
+  pioneer:
+    command: bin/launcher
+    extensions: [gnome]
+    plugs:
+      - joystick
+      - x11
+      - opengl
+      - audio-playback
+      - alsa
+      - network
+      - network-bind
+      - home
+      - removable-media
+      - wayland
+    command-chain: ["snap/command-chain/alsa-launch"]
+    environment:
+      ALWAYS_USE_PULSEAUDIO: '1'
